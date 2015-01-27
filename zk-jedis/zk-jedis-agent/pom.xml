@@ -14,7 +14,7 @@
 	<url>http://maven.apache.org</url>
 
 	<build>
-		<finalName>zk-jedis</finalName>
+		<finalName>zk-jedis-agent</finalName>
 		<pluginManagement>
 			<plugins>
 				<plugin>

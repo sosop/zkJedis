@@ -48,7 +48,7 @@ public class Agent {
     }
 
     public static void main(String[] args) throws UnknownHostAndPortException, InterruptedException {
-        Agent agent = new Agent(PropsUtil.properties(FileUtil.getConfigFile("config.properties")));
+        Agent agent = new Agent(PropsUtil.properties(FileUtil.getFile("/data/config.properties")));
         if ("m".equals(args[0])) {
             agent.init(NodeMode.MASTER);
         } else if ("s".equals(args[0])) {
@@ -176,6 +176,7 @@ public class Agent {
                 if (children.get(0) != null) {
                     client.create().withMode(CreateMode.EPHEMERAL)
                             .forPath(clusterPath + "/" + children.get(0));
+                    client.delete().forPath(path + "/" + children.get(0));
                 }
             }
         } catch (Exception e) {
