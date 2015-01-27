@@ -1,4 +1,4 @@
-package com.sosop.zkJedis.client.utils;
+package com.sosop.zkJedis.common.utils;
 /**
  * 
  * @author xiaolong.hou

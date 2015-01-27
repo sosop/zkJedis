@@ -1,4 +1,4 @@
-package com.sosop.zkJedis.client.utils;
+package com.sosop.zkJedis.common.utils;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -8,11 +8,9 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.sosop.zkJedis.client.zk.ZkAction;
-
 public class PropsUtil {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ZkAction.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PropsUtil.class);
 
     public static Properties properties(File file) {
         Properties props = new Properties();

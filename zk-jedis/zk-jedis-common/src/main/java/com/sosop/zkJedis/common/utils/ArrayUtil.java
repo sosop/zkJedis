@@ -1,4 +1,4 @@
-package com.sosop.zkJedis.client.utils;
+package com.sosop.zkJedis.common.utils;
 
 public class ArrayUtil {
 	public static boolean isMatch(String[] arr, String v) {

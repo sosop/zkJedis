@@ -1,4 +1,4 @@
-package com.sosop.zkJedis.client.zk;
+package com.sosop.zkJedis.common.utils;
 
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;

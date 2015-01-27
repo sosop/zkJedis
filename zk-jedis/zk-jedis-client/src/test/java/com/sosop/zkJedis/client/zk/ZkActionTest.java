@@ -3,8 +3,8 @@ package com.sosop.zkJedis.client.zk;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.sosop.zkJedis.client.utils.FileUtil;
-import com.sosop.zkJedis.client.utils.PropsUtil;
+import com.sosop.zkJedis.common.utils.FileUtil;
+import com.sosop.zkJedis.common.utils.PropsUtil;
 
 public class ZkActionTest {
 

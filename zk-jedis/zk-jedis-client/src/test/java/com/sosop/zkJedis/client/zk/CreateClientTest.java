@@ -7,6 +7,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.sosop.zkJedis.common.utils.CreateClient;
+
 public class CreateClientTest {
 
     private String connectionsRight;

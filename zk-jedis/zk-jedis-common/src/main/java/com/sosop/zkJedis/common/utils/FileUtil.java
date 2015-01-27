@@ -1,4 +1,4 @@
-package com.sosop.zkJedis.client.utils;
+package com.sosop.zkJedis.common.utils;
 
 import java.io.File;
 import java.io.FileNotFoundException;
