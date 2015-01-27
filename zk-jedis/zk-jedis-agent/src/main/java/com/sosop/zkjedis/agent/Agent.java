@@ -14,6 +14,7 @@ import com.sosop.zkJedis.common.utils.CreateClient;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.NodeMode;
 import com.sosop.zkJedis.common.utils.PropsUtil;
+import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
 
@@ -104,16 +105,9 @@ public class Agent {
 
     private void createCluster() {
         String clusterName = props.getProperty("cluster.name", "my-cluster");
-        try {
-            clusterPath =
-                    new StringBuffer(50).append(CLUSTERS).append("/").append(clusterName)
-                            .toString();
-            if (client.checkExists().forPath(clusterPath) == null) {
-                client.create().withMode(CreateMode.PERSISTENT).forPath(clusterPath);
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
+        clusterPath =
+                new StringBuffer(50).append(CLUSTERS).append("/").append(clusterName).toString();
+        ZKUtil.create(client, clusterPath, CreateMode.PERSISTENT);
     }
 
     private void createMasterNode() throws UnknownHostAndPortException {
@@ -123,13 +117,7 @@ public class Agent {
                     "set property like this redis.hostAndPort=192.168.1.10:6371");
         }
         String nodePath = clusterPath + "/" + hostAndPort;
-        try {
-            if (client.checkExists().forPath(nodePath) == null) {
-                client.create().withMode(CreateMode.EPHEMERAL).forPath(nodePath);
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
+        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL);
     }
 
     private void createSlaveNode() throws UnknownHostAndPortException {
@@ -141,30 +129,14 @@ public class Agent {
         }
         String slavePath = SLAVES + "/" + master;
         String nodePath = slavePath + "/" + hostAndPort;
-        try {
-            if (client.checkExists().forPath(slavePath) == null) {
-                client.create().withMode(CreateMode.PERSISTENT).forPath(slavePath);
-            }
-            if (client.checkExists().forPath(nodePath) == null) {
-                client.create().withMode(CreateMode.EPHEMERAL).forPath(nodePath);
-            }
-            String[] masterHap = master.split(":");
-            jedis.slaveOf(masterHap[0], masterHap[1]);
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
+        ZKUtil.create(client, slavePath, CreateMode.PERSISTENT);
+        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL);
     }
 
     private void deleteNode() {
         String hostAndPort = props.getProperty("redis.hostAndPort");
         String path = clusterPath + "/" + hostAndPort;
-        try {
-            if (client.checkExists().forPath(path) != null) {
-                client.delete().forPath(path);
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
+        ZKUtil.delete(client, path);
     }
 
     private void slaveToMaster() {
@@ -174,9 +146,8 @@ public class Agent {
             if (client.checkExists().forPath(path) != null) {
                 List<String> children = client.getChildren().forPath(path);
                 if (children.get(0) != null) {
-                    client.create().withMode(CreateMode.EPHEMERAL)
-                            .forPath(clusterPath + "/" + children.get(0));
-                    client.delete().forPath(path + "/" + children.get(0));
+                    ZKUtil.create(client, clusterPath + "/" + children.get(0), CreateMode.EPHEMERAL);
+                    ZKUtil.delete(client, path + "/" + children.get(0));
                 }
             }
         } catch (Exception e) {
