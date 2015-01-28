@@ -1,6 +1,9 @@
 package com.sosop.zkJedis.common.utils;
 
+import java.util.List;
+
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +30,25 @@ public class ZKUtil {
         } catch (Exception e) {
             LOG.error(e.getMessage(), e.getCause());
         }
+    }
+
+    public static void addChildrenWatcher(CuratorFramework client, String path,
+            CuratorWatcher watcher) {
+        try {
+            client.getChildren().usingWatcher(watcher).forPath(path);
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+    }
+
+    public static List<String> children(CuratorFramework client, String path) {
+        List<String> children = null;
+        try {
+            children = client.getChildren().forPath(path);
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+        return children;
     }
 
 }

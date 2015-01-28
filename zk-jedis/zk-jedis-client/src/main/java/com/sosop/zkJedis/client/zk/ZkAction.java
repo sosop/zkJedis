@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.sosop.zkJedis.common.utils.CreateClient;
+import com.sosop.zkJedis.common.utils.ZKUtil;
 
 
 public class ZkAction {
@@ -30,6 +31,7 @@ public class ZkAction {
     private Properties props = null;
 
     private CuratorFramework client;
+
 
     static {
         RETRY_POLICY = new ExponentialBackoffRetry(1000, 3);
@@ -53,19 +55,17 @@ public class ZkAction {
                 CreateClient.create(connString, NAMESPACE, RETRY_POLICY, connTimeout,
                         sessionTimeout);
         client.start();
-        createSecond();
+        createSecondAndWatch();
     }
 
-    private void createSecond() {
-        try {
-            if (client.checkExists().forPath(CLUSTERS) == null) {
-                client.create().withMode(CreateMode.PERSISTENT).forPath(CLUSTERS);
-            }
-            if (client.checkExists().forPath(SLAVES) == null) {
-                client.create().withMode(CreateMode.PERSISTENT).forPath(SLAVES);
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
+    private void createSecondAndWatch() {
+        ZKUtil.create(client, CLUSTERS, CreateMode.PERSISTENT);
+        ZKUtil.create(client, SLAVES, CreateMode.PERSISTENT);
+        ZKUtil.addChildrenWatcher(client, CLUSTERS, new ClustersWatcher(client, CLUSTERS));
+        String path = null;
+        for (String cluster : ZKUtil.children(client, CLUSTERS)) {
+            path = CLUSTERS + "/" + cluster;
+            ZKUtil.addChildrenWatcher(client, path, new MasterWatcher(client, path));
         }
     }
 
