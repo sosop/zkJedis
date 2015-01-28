@@ -1,5 +1,8 @@
 package com.sosop.zkJedis.client.zk;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.curator.framework.CuratorFramework;
@@ -8,6 +11,7 @@ import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sosop.zkJedis.client.redis.ClusterInfo;
 import com.sosop.zkJedis.common.utils.CreateClient;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 
@@ -32,6 +36,8 @@ public class ZkAction {
 
     private CuratorFramework client;
 
+    private ClusterInfo clusters;
+
 
     static {
         RETRY_POLICY = new ExponentialBackoffRetry(1000, 3);
@@ -43,7 +49,8 @@ public class ZkAction {
         this.props = props;
     }
 
-    public void init() {
+    public ZkAction init(ClusterInfo clusters) {
+        this.clusters = clusters;
         String connString = props.getProperty("zk.zkConnect", "localhost:2181");
         Integer connTimeout =
                 Integer.parseInt(props.getProperty("zk.zkConnectionTimeoutMs",
@@ -56,16 +63,26 @@ public class ZkAction {
                         sessionTimeout);
         client.start();
         createSecondAndWatch();
+        return this;
+    }
+
+    public Map<String, List<String>> clusters() {
+        Map<String, List<String>> clusters = new HashMap<>();
+        List<String> list = ZKUtil.children(client, CLUSTERS);
+        for (String c : list) {
+            clusters.put(c, ZKUtil.children(client, CLUSTERS + "/" + c));
+        }
+        return clusters;
     }
 
     private void createSecondAndWatch() {
         ZKUtil.create(client, CLUSTERS, CreateMode.PERSISTENT);
         ZKUtil.create(client, SLAVES, CreateMode.PERSISTENT);
-        ZKUtil.addChildrenWatcher(client, CLUSTERS, new ClustersWatcher(client, CLUSTERS));
+        ZKUtil.addChildrenWatcher(client, CLUSTERS, new ClustersWatcher(client, CLUSTERS, clusters));
         String path = null;
         for (String cluster : ZKUtil.children(client, CLUSTERS)) {
             path = CLUSTERS + "/" + cluster;
-            ZKUtil.addChildrenWatcher(client, path, new MasterWatcher(client, path));
+            ZKUtil.addChildrenWatcher(client, path, new MasterWatcher(client, path, clusters));
         }
     }
 

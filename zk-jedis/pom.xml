@@ -25,6 +25,7 @@
 		<curator.version>2.7.1</curator.version>
 		<jedis.version>2.6.2</jedis.version>
 		<logback.version>1.1.2</logback.version>
+		<cglib.version>3.1</cglib.version>
 	</properties>
 
 	<build>
@@ -104,6 +105,11 @@
 				<groupId>ch.qos.logback</groupId>
 				<artifactId>logback-classic</artifactId>
 				<version>${logback.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>cglib</groupId>
+				<artifactId>cglib</artifactId>
+				<version>${cglib.version}</version>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>

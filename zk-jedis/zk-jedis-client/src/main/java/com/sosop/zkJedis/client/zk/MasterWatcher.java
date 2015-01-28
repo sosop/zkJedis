@@ -7,25 +7,29 @@ import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher.Event.EventType;
 
+import com.sosop.zkJedis.client.redis.ClusterInfo;
+
 public class MasterWatcher implements CuratorWatcher {
 
     private CuratorFramework client;
 
     private String nodePath;
 
-    public MasterWatcher(CuratorFramework client, String nodePath) {
+    private ClusterInfo clusters;
+
+    public MasterWatcher(CuratorFramework client, String nodePath, ClusterInfo clusters) {
         this.client = client;
         this.nodePath = nodePath;
+        this.clusters = clusters;
     }
 
     @Override
     public void process(WatchedEvent event) throws Exception {
         if (event.getType() == EventType.NodeChildrenChanged) {
-            List<String> clusters = client.getChildren().forPath(nodePath);
-            for (String cluster : clusters) {
-                System.out.println("MasterListener");
-                System.out.println(cluster);
-            }
+            List<String> servers = client.getChildren().forPath(nodePath);
+            int index = event.getPath().lastIndexOf("/") + 1;
+            clusters.rebuildCluster(event.getPath().substring(index), servers);
+            System.out.println(clusters);
         }
         if (event.getType() != EventType.NodeDeleted) {
             client.getChildren().usingWatcher(this).forPath(nodePath);
