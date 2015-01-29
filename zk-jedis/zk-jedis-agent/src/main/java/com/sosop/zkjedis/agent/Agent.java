@@ -18,6 +18,7 @@ import com.sosop.zkJedis.common.utils.PropsUtil;
 import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
+import com.sosop.zkjedis.agent.listener.SlavesListen;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
 
 public class Agent {
@@ -34,6 +35,8 @@ public class Agent {
 
     private String slavesPath;
 
+    private String slaveNodePath;
+
     private ZkJedis jedis;
 
     private static final int maxCheckTimes = 10;
@@ -42,15 +45,16 @@ public class Agent {
         RETRY_POLICY = new ExponentialBackoffRetry(1000, 3);
     }
 
-    public static void main(String[] args) throws UnknownHostAndPortException, InterruptedException {
+    public static void main(String[] args) throws Exception {
         Agent agent = new Agent(PropsUtil.properties(FileUtil.getFile("/data/config.properties")));
-
 
         if ("m".equals(args[0])) {
             agent.init(NodeMode.MASTER);
         } else if ("s".equals(args[0])) {
             agent.init(NodeMode.SLAVE);
         }
+        new SlavesListen(agent.clusterPath, agent.slaveNodePath).start(agent.client,
+                Constants.ZK.SLAVES);
         int flag = 0;
         int sleepTime = 2000;
         while (true) {
@@ -64,7 +68,7 @@ public class Agent {
             if (flag == maxCheckTimes) {
                 agent.deleteNode();
                 if ("m".equals(args[0])) {
-                    agent.slaveToMaster();
+                    agent.promoteSlave();
                 }
                 break;
             }
@@ -109,6 +113,7 @@ public class Agent {
 
     private void createSlaves() throws UnknownHostAndPortException {
         String clusterName = props.getProperty("cluster.name");
+        clusterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName);
         String master = props.getProperty("redis.master");
         if (clusterName == null || master == null) {
             throw new UnknownHostAndPortException(
@@ -133,11 +138,10 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this redis.hostAndPort=192.168.1.10:6371");
         }
-        int index = Integer.valueOf(ZKUtil.getData(client, clusterPath)) + 1;
-        String max = String.valueOf(index);
+        int index = Integer.valueOf(ZKUtil.getData(client, clusterPath));
         String nodePath = StringUtil.append(clusterPath, "/", hostAndPort);
-        ZKUtil.setData(client, clusterPath, max.getBytes());
-        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL, max.getBytes());
+        ZKUtil.setData(client, clusterPath, String.valueOf(index + 1).getBytes());
+        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL, String.valueOf(index).getBytes());
     }
 
     private void createSlaveNode() throws UnknownHostAndPortException {
@@ -146,8 +150,8 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this #redis.hostAndPort=192.168.1.10:6371");
         }
-        String nodePath = StringUtil.append(slavesPath, "/", hostAndPort);
-        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL);
+        slaveNodePath = StringUtil.append(slavesPath, "/", hostAndPort);
+        ZKUtil.create(client, slaveNodePath, CreateMode.EPHEMERAL);
     }
 
     private void deleteNode() {
@@ -156,7 +160,7 @@ public class Agent {
         ZKUtil.delete(client, path);
     }
 
-    private void slaveToMaster() {
+    private void promoteSlave() {
         String hostAndPort = props.getProperty("redis.hostAndPort");
         String path = StringUtil.append(Constants.ZK.SLAVES, "/", hostAndPort);
         try {
