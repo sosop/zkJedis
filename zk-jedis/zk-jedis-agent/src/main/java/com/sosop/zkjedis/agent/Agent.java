@@ -10,6 +10,7 @@ import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.sosop.zkJedis.common.utils.Constants;
 import com.sosop.zkJedis.common.utils.CreateClient;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.NodeMode;
@@ -18,23 +19,12 @@ import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
-import com.sosop.zkjedis.agent.watcher.SlaveNodeWatcher;
 
 public class Agent {
 
     private static final Logger LOG = LoggerFactory.getLogger(Agent.class);
 
-    private static final String NAMESPACE = "redis-clusters";
-
-    private static final String CLUSTERS = "/clusters";
-
-    private static final String SLAVES = "/slaves";
-
-    private static final ExponentialBackoffRetry RETRY_POLICY;
-
-    private final Integer CONNECTION_TIMEOUT_MS = 5000;
-
-    private final Integer SESSION_TIMEOUT_MS = 10000;
+    public static final ExponentialBackoffRetry RETRY_POLICY;
 
     private Properties props = null;
 
@@ -92,15 +82,14 @@ public class Agent {
         String connString = props.getProperty("zk.zkConnect", "localhost:2181");
         Integer connTimeout =
                 Integer.parseInt(props.getProperty("zk.zkConnectionTimeoutMs",
-                        String.valueOf(CONNECTION_TIMEOUT_MS)));
+                        String.valueOf(Constants.ZK.CONNECTION_TIMEOUT_MS)));
         Integer sessionTimeout =
                 Integer.parseInt(props.getProperty("zk.zkSessionTimeoutMs",
-                        String.valueOf(SESSION_TIMEOUT_MS)));
+                        String.valueOf(Constants.ZK.SESSION_TIMEOUT_MS)));
         client =
-                CreateClient.create(connString, NAMESPACE, RETRY_POLICY, connTimeout,
+                CreateClient.create(connString, Constants.ZK.NAMESPACE, RETRY_POLICY, connTimeout,
                         sessionTimeout);
         client.start();
-        client.getCuratorListenable().addListener(new SlaveNodeWatcher());
         String[] hap = props.getProperty("redis.hostAndPort").split(":");
         jedis = new ZkJedis(hap[0], Integer.valueOf(hap[1]));
         if (mode == NodeMode.MASTER) {
@@ -114,7 +103,7 @@ public class Agent {
 
     private void createCluster() {
         String clusterName = props.getProperty("cluster.name", "my-cluster");
-        clusterPath = StringUtil.append(CLUSTERS, "/", clusterName);
+        clusterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName);
         ZKUtil.create(client, clusterPath, CreateMode.PERSISTENT, "0".getBytes());
     }
 
@@ -125,8 +114,8 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this #[cluster.name=xxx | redis.master=192.168.1.10:6371]");
         }
-        String masterPath = StringUtil.append(CLUSTERS, "/", clusterName, "/", master);
-        slavesPath = StringUtil.append(SLAVES, "/", master);
+        String masterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName, "/", master);
+        slavesPath = StringUtil.append(Constants.ZK.SLAVES, "/", master);
         if (ZKUtil.notExist(client, masterPath)) {
             throw new UnknownHostAndPortException("集群或master不存在");
         }
@@ -169,7 +158,7 @@ public class Agent {
 
     private void slaveToMaster() {
         String hostAndPort = props.getProperty("redis.hostAndPort");
-        String path = StringUtil.append(SLAVES, "/", hostAndPort);
+        String path = StringUtil.append(Constants.ZK.SLAVES, "/", hostAndPort);
         try {
             if (ZKUtil.exist(client, path)) {
                 List<String> children = ZKUtil.children(client, path);

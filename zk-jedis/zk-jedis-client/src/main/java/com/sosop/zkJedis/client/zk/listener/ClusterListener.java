@@ -5,14 +5,18 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
 
 import com.sosop.zkJedis.client.redis.ClusterInfo;
 import com.sosop.zkJedis.common.zkCache.CacheListener;
+import com.sosop.zkJedis.common.zkCache.IZKListener;
 
 public class ClusterListener extends CacheListener implements IZKListener {
 
     private ClusterInfo clusters;
 
-    @Override
-    public void start(CuratorFramework client, String path, ClusterInfo clusters) throws Exception {
+    public ClusterListener(ClusterInfo clusters) {
         this.clusters = clusters;
+    }
+
+    @Override
+    public void start(CuratorFramework client, String path) throws Exception {
         pathChilderCache(client, path, false).start();
     }
 
@@ -21,7 +25,7 @@ public class ClusterListener extends CacheListener implements IZKListener {
             throws Exception {
         if (event.getType() == PathChildrenCacheEvent.Type.CHILD_ADDED) {
             String path = event.getData().getPath();
-            new MasterListener().start(client, path, clusters);
+            new MasterListener(clusters).start(client, path);
         }
     }
 

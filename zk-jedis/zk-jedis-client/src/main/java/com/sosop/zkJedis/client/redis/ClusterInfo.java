@@ -12,8 +12,10 @@ import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPool;
 
 import com.sosop.zkJedis.client.zk.ZkAction;
+import com.sosop.zkJedis.common.utils.Constants;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.PropsUtil;
+import com.sosop.zkJedis.common.utils.StringUtil;
 
 public class ClusterInfo {
 
@@ -50,6 +52,7 @@ public class ClusterInfo {
         clusters = new HashMap<>();
     }
 
+    @Deprecated
     public void rebuildCluster(String clusterName, List<String> servers) {
         ShardedCluster shard = clusters.get(clusterName);
         if (null != shard) {
@@ -62,18 +65,56 @@ public class ClusterInfo {
         }
     }
 
+    public void rebuildCluster(String clusterName, String node, int index) {
+        ShardedCluster shard = clusters.get(clusterName);
+        List<String> nodes = null;
+        if (null != shard) {
+            nodes = shard.getNodes();
+            if (index == -1) {
+                nodes.remove(node);
+            } else if (index >= nodes.size()) {
+                for (int i = nodes.size(); i <= index; i++) {
+                    nodes.add(Constants.NULL_STRING);
+                }
+                nodes.set(index, node);
+            } else {
+                int ind = -1;
+                if ((ind = nodes.indexOf(Constants.NULL_STRING)) >= 0) {
+                    nodes.set(ind, node);
+                } else {
+                    nodes.add(index, node);
+                }
+            }
+            shard.setPool(buildPool(clusterName, nodes));
+            clusters.put(clusterName, shard);
+        } else {
+            nodes = new ArrayList<>();
+            if (index > 0) {
+                for (int i = 0; i <= index; i++) {
+                    nodes.add(Constants.NULL_STRING);
+                }
+                nodes.set(index, node);
+            } else {
+                nodes.add(index, node);
+            }
+            clusters.put(clusterName,
+                    new ShardedCluster(clusterName, nodes, buildPool(clusterName, nodes)));
+        }
+    }
+
     public ShardedJedisPool buildPool(String clusterName, List<String> servers) {
         List<JedisShardInfo> shards = new ArrayList<>();
         for (String s : servers) {
-            String[] hap = s.split(":");
-            shards.add(new JedisShardInfo(hap[0], hap[1]));
+            if (StringUtil.notNull(s)) {
+                String[] hap = s.split(":");
+                shards.add(new JedisShardInfo(hap[0], hap[1]));
+            }
         }
         if (null != config) {
             return new ShardedJedisPool(config, shards);
         } else {
             return new ShardedJedisPool(configs.get(clusterName), shards);
         }
-
     }
 
     public ShardedJedis redis() {

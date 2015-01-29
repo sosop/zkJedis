@@ -12,6 +12,7 @@ import redis.clients.jedis.JedisCluster;
  */
 public class App {
     public static void main(String[] args) {
+
         Set<HostAndPort> nodes = new HashSet<>();
         nodes.add(new HostAndPort("127.0.0.1", 8000));
         nodes.add(new HostAndPort("127.0.0.1", 8001));
@@ -23,5 +24,6 @@ public class App {
         cluster.set("c", "c");
         cluster.set("think", "value");
         cluster.close();
+
     }
 }
