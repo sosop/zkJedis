@@ -18,7 +18,7 @@ public class ZkActionTest {
     @Test
     public void testCreateSecond() throws InterruptedException {
         // action.init().clusters();
-        while (true);
+        // while (true);
         // action.close();
     }
 }

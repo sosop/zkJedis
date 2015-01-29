@@ -14,6 +14,7 @@ import com.sosop.zkJedis.common.utils.CreateClient;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.NodeMode;
 import com.sosop.zkJedis.common.utils.PropsUtil;
+import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
@@ -39,6 +40,8 @@ public class Agent {
     private CuratorFramework client;
 
     private String clusterPath;
+
+    private String slavesPath;
 
     private ZkJedis jedis;
 
@@ -99,15 +102,35 @@ public class Agent {
             createCluster();
             createMasterNode();
         } else {
+            createSlaves();
             createSlaveNode();
         }
     }
 
     private void createCluster() {
         String clusterName = props.getProperty("cluster.name", "my-cluster");
-        clusterPath =
-                new StringBuffer(50).append(CLUSTERS).append("/").append(clusterName).toString();
-        ZKUtil.create(client, clusterPath, CreateMode.PERSISTENT);
+        clusterPath = StringUtil.append(CLUSTERS, "/", clusterName);
+        ZKUtil.create(client, clusterPath, CreateMode.PERSISTENT, "0".getBytes());
+    }
+
+    private void createSlaves() throws UnknownHostAndPortException {
+        String clusterName = props.getProperty("cluster.name");
+        String master = props.getProperty("redis.master");
+        if (clusterName == null || master == null) {
+            throw new UnknownHostAndPortException(
+                    "set property like this #[cluster.name=xxx | redis.master=192.168.1.10:6371]");
+        }
+        String masterPath = StringUtil.append(CLUSTERS, "/", clusterName, master);
+        slavesPath = StringUtil.append(SLAVES, "/", master);
+        if (ZKUtil.notExist(client, masterPath)) {
+            throw new UnknownHostAndPortException("集群或master不存在");
+        }
+        if (ZKUtil.notExist(client, slavesPath)) {
+            String index = ZKUtil.getData(client, masterPath);
+            ZKUtil.create(client, slavesPath, CreateMode.PERSISTENT, index.getBytes());
+            String[] hap = master.split(":");
+            jedis.slaveOf(hap[0], hap[1]);
+        }
     }
 
     private void createMasterNode() throws UnknownHostAndPortException {
@@ -116,38 +139,43 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this redis.hostAndPort=192.168.1.10:6371");
         }
-        String nodePath = clusterPath + "/" + hostAndPort;
-        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL);
+        int index = Integer.valueOf(ZKUtil.getData(client, clusterPath)) + 1;
+        String max = String.valueOf(index);
+        String nodePath = StringUtil.append(clusterPath, "/", hostAndPort);
+        ZKUtil.setData(client, clusterPath, max.getBytes());
+        ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL, max.getBytes());
     }
 
     private void createSlaveNode() throws UnknownHostAndPortException {
         String hostAndPort = props.getProperty("redis.hostAndPort");
-        String master = props.getProperty("redis.master");
-        if (hostAndPort == null || master == null) {
+        if (hostAndPort == null) {
             throw new UnknownHostAndPortException(
-                    "set property like this #[redis.hostAndPort=192.168.1.10:6371 | redis.master=192.168.1.10:6371]");
+                    "set property like this #redis.hostAndPort=192.168.1.10:6371");
         }
-        String slavePath = SLAVES + "/" + master;
-        String nodePath = slavePath + "/" + hostAndPort;
-        ZKUtil.create(client, slavePath, CreateMode.PERSISTENT);
+        String nodePath = StringUtil.append(slavesPath, "/", hostAndPort);
         ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL);
     }
 
     private void deleteNode() {
         String hostAndPort = props.getProperty("redis.hostAndPort");
-        String path = clusterPath + "/" + hostAndPort;
+        String path = StringUtil.append(clusterPath, "/", hostAndPort);
         ZKUtil.delete(client, path);
     }
 
     private void slaveToMaster() {
         String hostAndPort = props.getProperty("redis.hostAndPort");
-        String path = SLAVES + "/" + hostAndPort;
+        String path = StringUtil.append(SLAVES, "/", hostAndPort);
         try {
-            if (client.checkExists().forPath(path) != null) {
-                List<String> children = client.getChildren().forPath(path);
+            if (ZKUtil.exist(client, path)) {
+                List<String> children = ZKUtil.children(client, path);
                 if (children.get(0) != null) {
-                    ZKUtil.create(client, clusterPath + "/" + children.get(0), CreateMode.EPHEMERAL);
-                    ZKUtil.delete(client, path + "/" + children.get(0));
+                    String index = ZKUtil.getData(client, path);
+                    ZKUtil.create(client, StringUtil.append(clusterPath, "/", children.get(0)),
+                            CreateMode.EPHEMERAL, index.getBytes());
+                    ZKUtil.delete(client, StringUtil.append(path, "/", children.get(0)));
+                }
+                if (children.size() == 1) {
+                    ZKUtil.delete(client, path);
                 }
             }
         } catch (Exception e) {

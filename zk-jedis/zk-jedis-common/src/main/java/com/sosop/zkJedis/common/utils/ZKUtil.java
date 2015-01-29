@@ -12,10 +12,14 @@ public class ZKUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKUtil.class);
 
-    public static void create(CuratorFramework client, String path, CreateMode mode) {
+    public static void create(CuratorFramework client, String path, CreateMode mode, byte... data) {
         try {
-            if (client.checkExists().forPath(path) == null) {
-                client.create().withMode(mode).forPath(path);
+            if (!exist(client, path)) {
+                if (data != null && data.length > 0) {
+                    client.create().withMode(mode).forPath(path, data);
+                } else {
+                    client.create().withMode(mode).forPath(path);
+                }
             }
         } catch (Exception e) {
             LOG.error(e.getMessage(), e.getCause());
@@ -24,7 +28,7 @@ public class ZKUtil {
 
     public static void delete(CuratorFramework client, String path) {
         try {
-            if (client.checkExists().forPath(path) != null) {
+            if (exist(client, path)) {
                 client.delete().forPath(path);
             }
         } catch (Exception e) {
@@ -51,4 +55,45 @@ public class ZKUtil {
         return children;
     }
 
+    public static String getData(CuratorFramework client, String path) {
+        String data = null;
+        try {
+            if (exist(client, path)) {
+                data = new String(client.getData().forPath(path));
+            }
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+        return data;
+    }
+
+    public static void setData(CuratorFramework client, String path, byte[] data) {
+        try {
+            if (exist(client, path)) {
+                client.setData().forPath(path, data);
+            }
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+    }
+
+    public static boolean exist(CuratorFramework client, String path) {
+        boolean isExist = false;
+        try {
+            isExist = client.checkExists().forPath(path) != null;
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+        return isExist;
+    }
+
+    public static boolean notExist(CuratorFramework client, String path) {
+        boolean isExist = true;
+        try {
+            isExist = client.checkExists().forPath(path) == null;
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+        return isExist;
+    }
 }
