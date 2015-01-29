@@ -29,7 +29,6 @@ public class MasterWatcher implements CuratorWatcher {
             List<String> servers = client.getChildren().forPath(nodePath);
             int index = event.getPath().lastIndexOf("/") + 1;
             clusters.rebuildCluster(event.getPath().substring(index), servers);
-            System.out.println(clusters);
         }
         if (event.getType() != EventType.NodeDeleted) {
             client.getChildren().usingWatcher(this).forPath(nodePath);

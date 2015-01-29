@@ -6,9 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
@@ -17,11 +14,8 @@ import redis.clients.jedis.ShardedJedisPool;
 import com.sosop.zkJedis.client.zk.ZkAction;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.PropsUtil;
-import com.sosop.zkJedis.common.utils.StringUtil;
 
 public class ClusterInfo {
-
-    private static final Logger LOG = LoggerFactory.getLogger(ClusterInfo.class);
 
     private Map<String, ShardedCluster> clusters;
 
@@ -31,7 +25,6 @@ public class ClusterInfo {
 
     private String defaultName;
 
-    private ZkAction action;
 
     public ClusterInfo(JedisPoolConfig config) {
         this.config = config;
@@ -53,19 +46,8 @@ public class ClusterInfo {
     }
 
     public void init() {
-        action =
-                new ZkAction(PropsUtil.properties(FileUtil.getConfigFile("config.properties")))
-                        .init(this);
+        new ZkAction(PropsUtil.properties(FileUtil.getConfigFile("config.properties"))).start(this);
         clusters = new HashMap<>();
-        for (Entry<String, List<String>> c : action.clusters().entrySet()) {
-            clusters.put(c.getKey(),
-                    new ShardedCluster(c.getKey(), c.getValue(),
-                            buildPool(c.getKey(), c.getValue())));
-            if (StringUtil.isNull(this.defaultName)) {
-                this.defaultName = c.getKey();
-            }
-        }
-        System.out.println(this);
     }
 
     public void rebuildCluster(String clusterName, List<String> servers) {
@@ -120,6 +102,14 @@ public class ClusterInfo {
 
     public Map<String, ShardedCluster> getClusters() {
         return clusters;
+    }
+
+    public String getDefaultName() {
+        return defaultName;
+    }
+
+    public void setDefaultName(String defaultName) {
+        this.defaultName = defaultName;
     }
 
     @Override

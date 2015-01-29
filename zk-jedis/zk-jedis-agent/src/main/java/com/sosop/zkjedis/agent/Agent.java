@@ -18,6 +18,7 @@ import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
+import com.sosop.zkjedis.agent.watcher.SlaveNodeWatcher;
 
 public class Agent {
 
@@ -53,6 +54,8 @@ public class Agent {
 
     public static void main(String[] args) throws UnknownHostAndPortException, InterruptedException {
         Agent agent = new Agent(PropsUtil.properties(FileUtil.getFile("/data/config.properties")));
+
+
         if ("m".equals(args[0])) {
             agent.init(NodeMode.MASTER);
         } else if ("s".equals(args[0])) {
@@ -77,6 +80,7 @@ public class Agent {
             }
             TimeUnit.MILLISECONDS.sleep(sleepTime);
         }
+
     }
 
     private Agent(Properties props) {
@@ -96,6 +100,7 @@ public class Agent {
                 CreateClient.create(connString, NAMESPACE, RETRY_POLICY, connTimeout,
                         sessionTimeout);
         client.start();
+        client.getCuratorListenable().addListener(new SlaveNodeWatcher());
         String[] hap = props.getProperty("redis.hostAndPort").split(":");
         jedis = new ZkJedis(hap[0], Integer.valueOf(hap[1]));
         if (mode == NodeMode.MASTER) {
@@ -120,7 +125,7 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this #[cluster.name=xxx | redis.master=192.168.1.10:6371]");
         }
-        String masterPath = StringUtil.append(CLUSTERS, "/", clusterName, master);
+        String masterPath = StringUtil.append(CLUSTERS, "/", clusterName, "/", master);
         slavesPath = StringUtil.append(SLAVES, "/", master);
         if (ZKUtil.notExist(client, masterPath)) {
             throw new UnknownHostAndPortException("集群或master不存在");
@@ -169,9 +174,9 @@ public class Agent {
             if (ZKUtil.exist(client, path)) {
                 List<String> children = ZKUtil.children(client, path);
                 if (children.get(0) != null) {
-                    String index = ZKUtil.getData(client, path);
-                    ZKUtil.create(client, StringUtil.append(clusterPath, "/", children.get(0)),
-                            CreateMode.EPHEMERAL, index.getBytes());
+                    // String index = ZKUtil.getData(client, path);
+                    // ZKUtil.create(client, StringUtil.append(clusterPath, "/", children.get(0)),
+                    // CreateMode.EPHEMERAL, index.getBytes());
                     ZKUtil.delete(client, StringUtil.append(path, "/", children.get(0)));
                 }
                 if (children.size() == 1) {

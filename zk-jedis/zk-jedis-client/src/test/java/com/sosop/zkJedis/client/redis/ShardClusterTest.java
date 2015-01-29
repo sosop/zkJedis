@@ -23,7 +23,7 @@ public class ShardClusterTest {
 
     @Test
     public void testJedis() {
-        // shard.init();
-        // while (true);
+        shard.init();
+        while (true);
     }
 }

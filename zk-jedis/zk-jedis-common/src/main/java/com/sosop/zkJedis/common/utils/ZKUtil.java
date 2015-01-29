@@ -3,6 +3,7 @@ package com.sosop.zkJedis.common.utils;
 import java.util.List;
 
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.CuratorListener;
 import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
@@ -40,6 +41,14 @@ public class ZKUtil {
             CuratorWatcher watcher) {
         try {
             client.getChildren().usingWatcher(watcher).forPath(path);
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e.getCause());
+        }
+    }
+
+    public static void addPathWatcher(CuratorFramework client, String path, CuratorListener watcher) {
+        try {
+
         } catch (Exception e) {
             LOG.error(e.getMessage(), e.getCause());
         }
