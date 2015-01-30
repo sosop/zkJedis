@@ -18,8 +18,9 @@ import java.util.concurrent.locks.LockSupport;
 import org.apache.log4j.Logger;
 
 /**
- * @author xiaolong.hou
- * @version 0.0.1
+ * @author SOSOP
+ * 
+ * @version 1.0.0
  * @date 2014.8.29
  * @describe 文件操作, 主要针对日志和统计信息
  */
@@ -142,7 +143,7 @@ public class FileUtil {
         return sb.toString();
     }
 
-    public static String getPath(String filename) {
+    public static String getContextPath(String filename) {
         String baseDir = FileUtil.class.getResource("/").getPath();
         String fullPath = StringUtil.append(baseDir, filename);
         fullPath =
@@ -152,7 +153,7 @@ public class FileUtil {
 
     public static File getConfigFile(String filename) {
 
-        Path path = Paths.get(getPath(filename));
+        Path path = Paths.get(getContextPath(filename));
 
         if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) {
             path = path.getParent().resolveSibling(StringUtil.append("classes/", filename));
@@ -160,7 +161,7 @@ public class FileUtil {
         return path.toFile();
     }
 
-    public static File getFile(String filename) {
+    public static File getAbsoluteFile(String filename) {
         Path path = Paths.get(filename);
         if (Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) {
             return null;

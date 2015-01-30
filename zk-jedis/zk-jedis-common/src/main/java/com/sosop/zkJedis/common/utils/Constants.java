@@ -16,4 +16,5 @@ public class Constants {
     }
 
     public static final String NULL_STRING = "";
+    public static final String TRUE_NULL = null;
 }

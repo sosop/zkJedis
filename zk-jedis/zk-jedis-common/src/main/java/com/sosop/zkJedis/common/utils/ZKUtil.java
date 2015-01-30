@@ -3,19 +3,27 @@ package com.sosop.zkJedis.common.utils;
 import java.util.List;
 
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.api.CuratorListener;
 import org.apache.curator.framework.api.CuratorWatcher;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * 
+ * 创建人: sosop
+ * 
+ * 创建时间：Jan 30, 2015 11:23:57 AM
+ * 
+ * @ClassName: ZKUtil
+ * @Description: TODO(这里用一句话描述这个类的作用)
+ */
 public class ZKUtil {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZKUtil.class);
 
     public static void create(CuratorFramework client, String path, CreateMode mode, byte... data) {
         try {
-            if (!exist(client, path)) {
+            if (notExist(client, path)) {
                 if (data != null && data.length > 0) {
                     client.create().withMode(mode).forPath(path, data);
                 } else {
@@ -46,14 +54,6 @@ public class ZKUtil {
         }
     }
 
-    public static void addPathWatcher(CuratorFramework client, String path, CuratorListener watcher) {
-        try {
-
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
-    }
-
     public static List<String> children(CuratorFramework client, String path) {
         List<String> children = null;
         try {
@@ -64,12 +64,14 @@ public class ZKUtil {
         return children;
     }
 
+    public static String firstChild(CuratorFramework client, String path) {
+        return children(client, path).get(0);
+    }
+
     public static String getData(CuratorFramework client, String path) {
         String data = null;
         try {
-            if (exist(client, path)) {
-                data = new String(client.getData().forPath(path));
-            }
+            data = new String(client.getData().forPath(path));
         } catch (Exception e) {
             LOG.error(e.getMessage(), e.getCause());
         }

@@ -47,7 +47,8 @@ public class Agent {
     }
 
     public static void main(String[] args) throws Exception {
-        Agent agent = new Agent(PropsUtil.properties(FileUtil.getFile("/data/config.properties")));
+        Agent agent =
+                new Agent(PropsUtil.properties(FileUtil.getAbsoluteFile("/data/config.properties")));
 
         if ("m".equals(args[0])) {
             agent.init(NodeMode.MASTER);
