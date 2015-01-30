@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.utils.CloseableUtils;
 import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,8 @@ public class Agent {
         while (true) {
             try {
                 agent.jedis.ping();
+                sleepTime = 2000;
+                flag = 0;
             } catch (Exception e) {
                 LOG.info("connet refused " + flag);
                 sleepTime = 100;
@@ -74,7 +77,7 @@ public class Agent {
             }
             TimeUnit.MILLISECONDS.sleep(sleepTime);
         }
-
+        agent.close();
     }
 
     private Agent(Properties props) {
@@ -179,5 +182,9 @@ public class Agent {
         } catch (Exception e) {
             LOG.error(e.getMessage(), e.getCause());
         }
+    }
+
+    public void close() {
+        CloseableUtils.closeQuietly(client);
     }
 }

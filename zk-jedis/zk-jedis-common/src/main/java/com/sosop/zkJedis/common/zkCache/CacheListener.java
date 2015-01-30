@@ -14,7 +14,7 @@ public abstract class CacheListener {
 
     public abstract void jobNode(CuratorFramework client) throws Exception;
 
-    public PathChildrenCache pathChilderCache(CuratorFramework client, String path,
+    public PathChildrenCache pathChildrenCache(CuratorFramework client, String path,
             boolean cacheData) {
         final PathChildrenCache cache = new PathChildrenCache(client, path, cacheData);
         cache.getListenable().addListener(new PathChildrenCacheListener() {

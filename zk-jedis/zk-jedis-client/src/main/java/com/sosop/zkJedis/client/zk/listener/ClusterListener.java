@@ -1,7 +1,11 @@
 package com.sosop.zkJedis.client.zk.listener;
 
+import java.io.Closeable;
+
 import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.recipes.cache.PathChildrenCache;
 import org.apache.curator.framework.recipes.cache.PathChildrenCacheEvent;
+import org.apache.curator.utils.CloseableUtils;
 
 import com.sosop.zkJedis.client.redis.ClusterInfo;
 import com.sosop.zkJedis.common.zkCache.CacheListener;
@@ -10,6 +14,7 @@ import com.sosop.zkJedis.common.zkCache.IZKListener;
 public class ClusterListener extends CacheListener implements IZKListener {
 
     private ClusterInfo clusters;
+    private PathChildrenCache cache;
 
     public ClusterListener(ClusterInfo clusters) {
         this.clusters = clusters;
@@ -17,7 +22,8 @@ public class ClusterListener extends CacheListener implements IZKListener {
 
     @Override
     public void start(CuratorFramework client, String path) throws Exception {
-        pathChilderCache(client, path, false).start();
+        cache = pathChildrenCache(client, path, false);
+        cache.start();
     }
 
     @Override
@@ -32,6 +38,11 @@ public class ClusterListener extends CacheListener implements IZKListener {
     @Override
     public void jobNode(CuratorFramework client) {
         // TODO do nothing
+    }
+
+    @Override
+    public void close(Closeable closeable) {
+        CloseableUtils.closeQuietly(cache);
     }
 
 }
