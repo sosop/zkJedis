@@ -1,6 +1,5 @@
 package com.sosop.zkjedis.agent;
 
-import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
@@ -19,7 +18,7 @@ import com.sosop.zkJedis.common.utils.PropsUtil;
 import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkjedis.agent.exception.UnknownHostAndPortException;
-import com.sosop.zkjedis.agent.listener.SlavesListen;
+import com.sosop.zkjedis.agent.listener.NodeListen;
 import com.sosop.zkjedis.agent.opt.ZkJedis;
 
 public class Agent {
@@ -55,8 +54,7 @@ public class Agent {
         } else if ("s".equals(args[0])) {
             agent.init(NodeMode.SLAVE);
         }
-        new SlavesListen(agent.clusterPath, agent.slaveNodePath).start(agent.client,
-                Constants.ZK.SLAVES);
+        new NodeListen(agent.slaveNodePath).start(agent.client, agent.clusterPath);
         int flag = 0;
         int sleepTime = 2000;
         while (true) {
@@ -71,9 +69,6 @@ public class Agent {
             }
             if (flag == maxCheckTimes) {
                 agent.deleteNode();
-                if ("m".equals(args[0])) {
-                    agent.promoteSlave();
-                }
                 break;
             }
             TimeUnit.MILLISECONDS.sleep(sleepTime);
@@ -120,12 +115,14 @@ public class Agent {
         clusterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName);
         String master = props.getProperty("redis.master");
         if (clusterName == null || master == null) {
+            this.close();
             throw new UnknownHostAndPortException(
                     "set property like this #[cluster.name=xxx | redis.master=192.168.1.10:6371]");
         }
         String masterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName, "/", master);
         slavesPath = StringUtil.append(Constants.ZK.SLAVES, "/", master);
         if (ZKUtil.notExist(client, masterPath)) {
+            this.close();
             throw new UnknownHostAndPortException("集群或master不存在");
         }
         if (ZKUtil.notExist(client, slavesPath)) {
@@ -139,6 +136,7 @@ public class Agent {
     private void createMasterNode() throws UnknownHostAndPortException {
         String hostAndPort = props.getProperty("redis.hostAndPort");
         if (hostAndPort == null) {
+            this.close();
             throw new UnknownHostAndPortException(
                     "set property like this redis.hostAndPort=192.168.1.10:6371");
         }
@@ -151,6 +149,7 @@ public class Agent {
     private void createSlaveNode() throws UnknownHostAndPortException {
         String hostAndPort = props.getProperty("redis.hostAndPort");
         if (hostAndPort == null) {
+            this.close();
             throw new UnknownHostAndPortException(
                     "set property like this #redis.hostAndPort=192.168.1.10:6371");
         }
@@ -162,27 +161,6 @@ public class Agent {
         String hostAndPort = props.getProperty("redis.hostAndPort");
         String path = StringUtil.append(clusterPath, "/", hostAndPort);
         ZKUtil.delete(client, path);
-    }
-
-    private void promoteSlave() {
-        String hostAndPort = props.getProperty("redis.hostAndPort");
-        String path = StringUtil.append(Constants.ZK.SLAVES, "/", hostAndPort);
-        try {
-            if (ZKUtil.exist(client, path)) {
-                List<String> children = ZKUtil.children(client, path);
-                if (children.get(0) != null) {
-                    // String index = ZKUtil.getData(client, path);
-                    // ZKUtil.create(client, StringUtil.append(clusterPath, "/", children.get(0)),
-                    // CreateMode.EPHEMERAL, index.getBytes());
-                    ZKUtil.delete(client, StringUtil.append(path, "/", children.get(0)));
-                }
-                if (children.size() == 1) {
-                    ZKUtil.delete(client, path);
-                }
-            }
-        } catch (Exception e) {
-            LOG.error(e.getMessage(), e.getCause());
-        }
     }
 
     public void close() {
