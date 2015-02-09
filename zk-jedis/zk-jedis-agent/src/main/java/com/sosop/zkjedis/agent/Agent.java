@@ -48,13 +48,12 @@ public class Agent {
     public static void main(String[] args) throws Exception {
         Agent agent =
                 new Agent(PropsUtil.properties(FileUtil.getAbsoluteFile("/data/config.properties")));
-
         if ("m".equals(args[0])) {
             agent.init(NodeMode.MASTER);
         } else if ("s".equals(args[0])) {
             agent.init(NodeMode.SLAVE);
         }
-        new NodeListen(agent.slaveNodePath).start(agent.client, agent.clusterPath);
+        new NodeListen(agent.slaveNodePath, agent.jedis).start(agent.client, agent.clusterPath);
         int flag = 0;
         int sleepTime = 2000;
         while (true) {
@@ -81,6 +80,8 @@ public class Agent {
         this.props = props;
     }
 
+
+    // initial current node
     private void init(NodeMode mode) throws UnknownHostAndPortException {
         String connString = props.getProperty("zk.zkConnect", "localhost:2181");
         Integer connTimeout =
@@ -104,12 +105,14 @@ public class Agent {
         }
     }
 
+    // if current node is master and add it to cluster
     private void createCluster() {
         String clusterName = props.getProperty("cluster.name", "my-cluster");
         clusterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName);
         ZKUtil.create(client, clusterPath, CreateMode.PERSISTENT, "0".getBytes());
     }
 
+    // create slaves dir on zk, and make the slave follow the master
     private void createSlaves() throws UnknownHostAndPortException {
         String clusterName = props.getProperty("cluster.name");
         clusterPath = StringUtil.append(Constants.ZK.CLUSTERS, "/", clusterName);

@@ -12,14 +12,17 @@ import com.sosop.zkJedis.common.utils.StringUtil;
 import com.sosop.zkJedis.common.utils.ZKUtil;
 import com.sosop.zkJedis.common.zkCache.CacheListener;
 import com.sosop.zkJedis.common.zkCache.IZKListener;
+import com.sosop.zkjedis.agent.opt.ZkJedis;
 
 public class NodeListen extends CacheListener implements IZKListener {
 
     private String slaveNodePath;
+    private ZkJedis jedis;
 
-    public NodeListen(String slaveNodePath) {
+    public NodeListen(String slaveNodePath, ZkJedis jedis) {
         super();
         this.slaveNodePath = slaveNodePath;
+        this.jedis = jedis;
     }
 
     @Override
@@ -36,21 +39,21 @@ public class NodeListen extends CacheListener implements IZKListener {
                 String data = ZKUtil.getData(client, ssPath);
                 String newSlavePath = StringUtil.append(Constants.ZK.SLAVES, "/", slavePath[3]);
                 ZKUtil.create(client, newSlavePath, CreateMode.PERSISTENT, data.getBytes());
+                System.out.println(slaves.get(0));
                 if (slaves.get(0).equals(slavePath[3])) {
-                    slaves.remove(0);
-                    System.out.println(StringUtil.append(Constants.ZK.CLUSTERS, "/", masterPath[2],
-                            "/", slaves.get(0)));
+                    jedis.slaveOfNoOne();
                     ZKUtil.create(client, StringUtil.append(Constants.ZK.CLUSTERS, "/",
-                            masterPath[2], "/", slaves.get(0)), CreateMode.EPHEMERAL, data
+                            masterPath[2], "/", slavePath[3]), CreateMode.EPHEMERAL, data
                             .getBytes());
                     for (String s : slaves) {
                         ZKUtil.delete(client, StringUtil.append(ssPath, "/", s));
                     }
                     ZKUtil.delete(client, ssPath);
-
                 } else {
-                    ZKUtil.create(client, StringUtil.append(newSlavePath, "/", slavePath[3]),
+                    ZKUtil.create(client, StringUtil.append(newSlavePath, "/", slaves.get(0)),
                             CreateMode.EPHEMERAL);
+                    String[] hap = slaves.get(0).split(":");
+                    jedis.slaveOf(hap[0], hap[1]);
                 }
             }
         }
