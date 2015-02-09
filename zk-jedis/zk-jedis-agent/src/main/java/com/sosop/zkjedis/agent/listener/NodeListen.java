@@ -37,9 +37,8 @@ public class NodeListen extends CacheListener implements IZKListener {
             if (masterPath[3].equals(slavePath[2])
                     && (slaves = ZKUtil.children(client, ssPath)).size() > 0) {
                 String data = ZKUtil.getData(client, ssPath);
-                String newSlavePath = StringUtil.append(Constants.ZK.SLAVES, "/", slavePath[3]);
+                String newSlavePath = StringUtil.append(Constants.ZK.SLAVES, "/", slaves.get(0));
                 ZKUtil.create(client, newSlavePath, CreateMode.PERSISTENT, data.getBytes());
-                System.out.println(slaves.get(0));
                 if (slaves.get(0).equals(slavePath[3])) {
                     jedis.slaveOfNoOne();
                     ZKUtil.create(client, StringUtil.append(Constants.ZK.CLUSTERS, "/",
@@ -50,8 +49,8 @@ public class NodeListen extends CacheListener implements IZKListener {
                     }
                     ZKUtil.delete(client, ssPath);
                 } else {
-                    ZKUtil.create(client, StringUtil.append(newSlavePath, "/", slaves.get(0)),
-                            CreateMode.EPHEMERAL);
+                    this.slaveNodePath = StringUtil.append(newSlavePath, "/", slavePath[3]);
+                    ZKUtil.create(client, this.slaveNodePath, CreateMode.EPHEMERAL);
                     String[] hap = slaves.get(0).split(":");
                     jedis.slaveOf(hap[0], hap[1]);
                 }

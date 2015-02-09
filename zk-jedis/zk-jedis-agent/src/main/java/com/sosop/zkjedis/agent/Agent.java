@@ -131,9 +131,9 @@ public class Agent {
         if (ZKUtil.notExist(client, slavesPath)) {
             String index = ZKUtil.getData(client, masterPath);
             ZKUtil.create(client, slavesPath, CreateMode.PERSISTENT, index.getBytes());
-            String[] hap = master.split(":");
-            jedis.slaveOf(hap[0], hap[1]);
         }
+        String[] hap = master.split(":");
+        jedis.slaveOf(hap[0], hap[1]);
     }
 
     private void createMasterNode() throws UnknownHostAndPortException {
@@ -143,7 +143,7 @@ public class Agent {
             throw new UnknownHostAndPortException(
                     "set property like this redis.hostAndPort=192.168.1.10:6371");
         }
-        int index = Integer.valueOf(ZKUtil.getData(client, clusterPath));
+        int index = ZKUtil.children(client, clusterPath).size();
         String nodePath = StringUtil.append(clusterPath, "/", hostAndPort);
         ZKUtil.setData(client, clusterPath, String.valueOf(index + 1).getBytes());
         ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL, String.valueOf(index).getBytes());
