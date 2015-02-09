@@ -147,6 +147,7 @@ public class Agent {
         String nodePath = StringUtil.append(clusterPath, "/", hostAndPort);
         ZKUtil.setData(client, clusterPath, String.valueOf(index + 1).getBytes());
         ZKUtil.create(client, nodePath, CreateMode.EPHEMERAL, String.valueOf(index).getBytes());
+        jedis.slaveOfNoOne();
     }
 
     private void createSlaveNode() throws UnknownHostAndPortException {

@@ -1,9 +1,12 @@
 package com.sosop.zkJedis.client.redis;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.ShardedJedis;
 
 public class ShardClusterTest {
 
@@ -22,8 +25,15 @@ public class ShardClusterTest {
     }
 
     @Test
-    public void testJedis() {
+    public void testJedis() throws InterruptedException {
         shard.init();
-        // while (true);
+        TimeUnit.SECONDS.sleep(10);
+        System.out.println(shard);
+
+        ShardedJedis jedis = shard.redis();
+        System.out.println(jedis.rpush("l", "1", "2"));
+        System.out.println(jedis.get("b"));
+        shard.retrieve(jedis);
+
     }
 }
