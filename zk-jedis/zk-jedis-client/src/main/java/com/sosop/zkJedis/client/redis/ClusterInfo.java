@@ -2,16 +2,22 @@ package com.sosop.zkJedis.client.redis;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
 
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPool;
 
 import com.sosop.zkJedis.client.zk.ZkAction;
+import com.sosop.zkJedis.common.utils.ClusterType;
 import com.sosop.zkJedis.common.utils.Constants;
 import com.sosop.zkJedis.common.utils.FileUtil;
 import com.sosop.zkJedis.common.utils.PropsUtil;
@@ -25,8 +31,11 @@ public class ClusterInfo {
 
     private Map<String, JedisPoolConfig> configs;
 
+    private Map<String, JedisCluster> proClusters;
+
     private String defaultName;
 
+    public ClusterInfo() {}
 
     public ClusterInfo(JedisPoolConfig config) {
         this.config = config;
@@ -39,7 +48,6 @@ public class ClusterInfo {
     public ClusterInfo(String defaultName, JedisPoolConfig config) {
         this.config = config;
         this.defaultName = defaultName;
-
     }
 
     public ClusterInfo(String defaultName, Map<String, JedisPoolConfig> configs) {
@@ -48,8 +56,34 @@ public class ClusterInfo {
     }
 
     public void init() {
-        new ZkAction(PropsUtil.properties(FileUtil.getConfigFile("config.properties"))).start(this);
-        clusters = new HashMap<>();
+        Properties props = PropsUtil.properties(FileUtil.getConfigFile("config.properties"));
+        String style = props.getProperty("clutster.style");
+        if (style.equalsIgnoreCase(ClusterType.SHARD.name())) {
+            new ZkAction(props).start(this);
+            clusters = new HashMap<>();
+        } else if (style.equalsIgnoreCase(ClusterType.PROTOTYPE.name())) {
+            proClusters = new HashMap<>();
+            String[] names = props.getProperty("cluster.names").split(",");
+            for (String name : names) {
+                if (StringUtil.notNull(name)) {
+                    String[] servers =
+                            props.getProperty(StringUtil.append("cluster.", name, ".servers"))
+                                    .split(",");
+                    Set<HostAndPort> nodes = new HashSet<>();
+                    for (String server : servers) {
+                        if (StringUtil.notNull(server)) {
+                            String[] hap = server.split(":");
+                            nodes.add(new HostAndPort(hap[0], Integer.parseInt(hap[1])));
+                        }
+                    }
+                    proClusters.put(name, new JedisCluster(nodes));
+                    defaultName = name;
+                }
+            }
+            this.defaultName = props.getProperty("default", defaultName);
+        } else if (style.equalsIgnoreCase(ClusterType.SENTINEL.name())) {
+
+        }
     }
 
     @Deprecated
@@ -141,6 +175,14 @@ public class ClusterInfo {
         clusters.get(clusterName).getPool().returnBrokenResource(redis);
     }
 
+    public JedisCluster cluster() {
+        return proClusters.get(defaultName);
+    }
+
+    public JedisCluster cluster(String clusterName) {
+        return proClusters.get(clusterName);
+    }
+
     public Map<String, ShardedCluster> getClusters() {
         return clusters;
     }
@@ -161,6 +203,4 @@ public class ClusterInfo {
         }
         return sb.toString();
     }
-
-
 }

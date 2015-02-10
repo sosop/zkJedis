@@ -67,23 +67,6 @@ function create()
     }
     END{print "加入集群完成..."}' $DEFAULT_CONF
 
-    # set slave
-    gawk 'BEGIN{CLIENT="'$CLIENT'"}
-    { 
-        if(NF >= 3)
-        {
-            split($1, arr, ":");
-            CLIENT" -h "arr[1]" -p "arr[2]" cluster nodes | gawk '\''$3 ~ /.*myself.*/{ print $1 }'\''" | getline id;
-            for(i = 3; i <= NF; i++)
-            {
-                split($i, a, ":");
-                system(CLIENT" -h "a[1]" -p "a[2]" cluster replicate "id" > /dev/null");
-            }
-        }
-    }
-    END{print "主从配置完成..."}' $DEFAULT_CONF
-
-
     # allocation slots
     gawk 'BEGIN{CLIENT="'$CLIENT'";print "正在分配slots, 可能需要几秒......"}
     { 
@@ -106,6 +89,24 @@ function create()
 
     }
     END{print "分配完成..."}' $DEFAULT_CONF
+
+    echo '稍等几秒，正在主从配置中...'
+    sleep 3;
+    # set slave
+    gawk 'BEGIN{CLIENT="'$CLIENT'"}
+    { 
+        if(NF >= 3)
+        {
+            split($1, arr, ":");
+            CLIENT" -h "arr[1]" -p "arr[2]" cluster nodes | gawk '\''$3 ~ /.*myself.*/{ print $1 }'\''" | getline id;
+            for(i = 3; i <= NF; i++)
+            {
+                split($i, a, ":");
+                system(CLIENT" -h "a[1]" -p "a[2]" cluster replicate "id" > /dev/null");
+            }
+        }
+    }
+    END{print "主从配置完成..."}' $DEFAULT_CONF
 }
 
 

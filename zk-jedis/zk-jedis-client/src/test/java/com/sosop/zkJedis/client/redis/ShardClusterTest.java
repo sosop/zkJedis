@@ -5,6 +5,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.Before;
 import org.junit.Test;
 
+import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.ShardedJedis;
 
@@ -21,11 +22,11 @@ public class ShardClusterTest {
         config.setTestOnBorrow(true);
         config.setTestOnReturn(true);
         config.setTestWhileIdle(true);
-        shard = new ClusterInfo(config);
     }
 
     @Test
     public void testJedis() throws InterruptedException {
+        shard = new ClusterInfo(config);
         shard.init();
         TimeUnit.SECONDS.sleep(10);
         System.out.println(shard);
@@ -34,6 +35,15 @@ public class ShardClusterTest {
         System.out.println(jedis.rpush("l", "1", "2"));
         System.out.println(jedis.get("b"));
         shard.retrieve(jedis);
+    }
 
+    @Test
+    public void testCluster() {
+        shard = new ClusterInfo();
+        shard.init();
+        JedisCluster jc = shard.cluster();
+        System.out.println(jc.get("ok"));
+        jc.set("test", "test");
+        System.out.println(jc.get("test"));
     }
 }
