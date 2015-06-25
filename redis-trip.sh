@@ -83,6 +83,7 @@ function create()
             slots = slots" "i
         }
         if (slots != "") {
+            print "正在服务器: "$1" 分配slots："$2
             cmd = CLIENT" -h "arr1[1]" -p "arr1[2]" cluster addslots "slots" > /dev/null";
             system(cmd);
         }
